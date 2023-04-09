@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-glm-bot",
   "description": "glm-testbot的稳定版，支持自建后端",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
