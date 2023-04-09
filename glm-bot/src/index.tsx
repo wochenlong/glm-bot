@@ -1,14 +1,29 @@
-import { Context, Session, Schema, Logger, segment, h, Dict } from "koishi";
+import { Context, Session, Schema, Logger, segment, h, Dict,Service } from "koishi";
 
 export const name = "glm-bot";
 const logger = new Logger(name);
 
-class Glm {
+/**
+ * glm 服务
+ */
+
+declare module 'koishi' {
+  interface Context {
+    glm: Glm
+  }
+  interface Glm {
+    chat(session:Session,prompt:string):Glm.Msg[]
+  }
+
+}
+
+class Glm extends Service {
   output_type: string
   g_voice_name: string
   key: number[]
   sessions: Dict;
-  constructor(private ctx: Context, private config: Glm.Config) {
+  constructor(ctx: Context, private config: Glm.Config) {
+    super(ctx,"glm",true)
     this.output_type = config.output
     this.g_voice_name = '甘雨'
     this.sessions = {}
@@ -16,7 +31,10 @@ class Glm {
     ctx.command('glm.clear', '清除会话').action(async ({ session }) => this.clear(session))
     ctx.command("glm <prompt:text>", "向chatglm提问")
       .usage("进阶：输入'glm 重置记忆 '即可将记忆清零")
-      .action(async ({ session }, prmpt) => this.split_by_type(session, prmpt));
+      .action(async ({ session }, prmpt) => {
+        const history:Glm.Msg[] = await this.chat(session, prmpt)
+        return await this.getContent(session.userId,history,session.userId)
+      });
     ctx.command(
       "glmmtg <text:text>",
       "输入你想画的画面，发送给ChatGLM，让ChatGLM来帮你写tag"
@@ -111,7 +129,7 @@ class Glm {
       return await this.ctx.http.get(apiAddress, { responseType: "text" })
     }
   }
-  async split_by_type(session: Session, prompt: string) {
+  async chat(session: Session, prompt: string) {
     logger.info(session.username+": "+prompt)
     let res_text: string
     if (this.config.type == '秋叶版api') {
@@ -124,7 +142,7 @@ class Glm {
     logger.info("GLM: "+res_text)
     history.push({ role: 'user', content: prompt }, { role: 'assistant', content: res_text })
     this.sessions[session.userId] = history
-    return await this.getContent(session.userId,history,session.userId)
+    return history
   }
   get_chat_session(sessionid: string): Glm.Msg[] {
     if (Object.keys(this.sessions).indexOf(sessionid) == -1) {
