@@ -1,11 +1,19 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import uvicorn
+import json
 from transformers import AutoModel, AutoTokenizer
 from typing import List,Tuple
+
+
+max_length = 4096
 # 根据id获取上下文信息
 def get_history(id: str) -> List[Tuple[str,str]] or None:
     if id in sessions.keys():
+        length = len(json.dumps(sessions[id],indent=2))
+        if length>max_length:
+            sessions[id] = []
+            return None
         if sessions[id] == []:
             return None
         return sessions[id]
@@ -19,12 +27,6 @@ def get_history(id: str) -> List[Tuple[str,str]] or None:
 def clear(id: str) -> str:
     sessions[id] = []
     return '已重置'
-
-
-def clear_all() -> str:
-    sessions = {}
-    return '已重置'
-
 
 
 
@@ -50,6 +52,13 @@ def predict(prompt: str, uid: str, max_length: int = 2048, top_p: float = 0.7, t
     print(get_history(uid))
     return response
 
+# while 1:
+#     uid = input("uid:")
+#     prompt = input('msg:')
+#     msg = predict(prompt=prompt,uid = uid)
+#     print(msg)
+
+
 app = FastAPI()
 
 
@@ -69,9 +78,5 @@ class Item_claer(BaseModel):
 def clear_session(item:Item_claer):
     return clear(item.uid)
 
-
-@app.get("/clearAll")
-def clear_all():
-    return clear_all()
 
 uvicorn.run(app, host="0.0.0.0", port=10269)
